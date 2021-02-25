@@ -22,7 +22,7 @@ namespace Kufar
         {
             //парсим главные категории в Бобруйске
             //ParseMainCategory(instance, project);
-
+            ParsePodCategoryAvto(instance, project);
 
             return 0;
         }
@@ -72,33 +72,55 @@ namespace Kufar
         }
 
 
-        public static void ParsePodCategory1(Instance instance, IZennoPosterProjectModel p)
+        public static void ParsePodCategoryAvto(Instance instance, IZennoPosterProjectModel p)
         {
             //instance.ClearCookie();
             BD bd = new BD(connectBD);
             Tab tab = instance.ActiveTab;
 
-            string query = "SELECT id, mainСategory,`linkMainСategory` FROM categories WHERE `status` = 'true' LIMIT 1;";
-            string[] res = bd.SelectBD(query)?.Split('|');
+            tab.NavigateAndWait("https://auto.kufar.by/", 2000);
 
-            if (res == null) return;
-
-            string id = res[0];
-            string mainСategory = res[1];
-            string linkMainСategory = res[2];
+            string query = "INSERT INTO categories (`mainСategory`, `category1`, `linkСategory1`, `status`) VALUES ('Авто и транспорт','{0}', '{1}', '---')";
+            string xpath = "//div[contains(@class, 'swiper-wrapper')]/a";
+            AddBdCategory(instance, p, xpath, query);
 
 
-            if (string.IsNullOrEmpty(id)) return;
-            //обновляем статус
-            query = $"UPDATE categories	SET `status`='---' WHERE id = '{id}';";
-            bd.InsertUpdateBD(query);
-
-            //Переходим по ссылке
 
 
         }
 
 
+
+
+        static void AddBdCategory(Instance instance, IZennoPosterProjectModel p, string xPathColEl, string queryFormat)
+        {
+            BD bd = new BD(connectBD);
+            //парсим категории
+            HtmlElementCollection colEl = instance.ActiveTab.FindElementsByXPath(xPathColEl);
+
+
+            foreach (var el in colEl)
+            {
+                string nameCategory = el.InnerText.Trim();
+                string linkCategory = el.GetAttribute("href").Trim() + "&typ=sell&sort=lst.d&size=30&cur=BYR&rgn=4&ar=12";
+
+                Send.InfoToLog(p, $"{nameCategory} - {linkCategory}");
+
+                string query = String.Format(queryFormat, nameCategory, linkCategory);
+
+                try
+                {
+                    bd.InsertUpdateBD(query);
+                }
+                catch (Exception ex)
+                {
+                    Send.InfoToLog(p, ex.Message);
+                }
+
+            }
+
+
+        }
 
     }
 }
