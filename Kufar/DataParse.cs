@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Kufar
 {
     public class DataParse
     {
+        #region Данные при первом запросе
         public int Id { get; set; }
 
         public int Idcategory { get; set; }
@@ -22,6 +24,19 @@ namespace Kufar
 
         /// <summary>Состояние (новое, б/у)</summary>
         public string condition { get; set; }
+        #endregion
+
+        #region Карточка товара
+        /// <summary>Фото товара</summary>
+        public string[] images { get; set; }
+        /// <summary>Данные о товаре</summary>
+        public Dictionary<string, string> oldAdParameters { get; set; }
+
+        /// <summary>Описание товара</summary>
+        public string descriptions { get; set; }
+        p
+
+        #endregion
 
     }
 }

@@ -92,7 +92,6 @@ namespace Kufar
 
             //токен для перехода на следующую страницу
             string next = string.Empty;
-
             //ищем токен
             foreach (var el in json?.props?.initialState?.listingGeneralist?.pagination)
             {
@@ -133,7 +132,7 @@ namespace Kufar
 
 
         /// <summary>
-        /// Получаем номер телефона
+        /// Получаем номер телефона (АКК должен быть авторизирован, только белорусские IP!!!)
         /// </summary>
         /// <param name="instance"></param>
         /// <param name="project"></param>
@@ -144,7 +143,7 @@ namespace Kufar
         {
             string userAgent = project.Profile.UserAgent;
 
-            ICookieContainer cookieContainer = project.Profile.CookieContainer;
+            //ICookieContainer cookieContainer = project.Profile.CookieContainer;
             string url = $"https://cre-api.kufar.by/items-search/v1/engine/v1/item/{idItem}/phone";
             string res = string.Empty;
 
