@@ -22,7 +22,25 @@ namespace Kufar
         {
             //парсим главные категории в Бобруйске
             //ParseMainCategory(instance, project);
-            ParsePodCategoryAvto(instance, project);
+            //ParsePodCategoryAvto(instance, project);
+            //ParsePodCategoryBitTexnica(instance, project);
+            //ParsePodCategoryKompTexnica(instance, project);
+
+            BD bd = new BD(connectBD);
+            while (true)
+            {
+                string[] res = bd.SelectBD("SELECT id, `mainСategory`, `linkMainСategory` FROM categories WHERE `status` = 'true' LIMIT 1;")?.Split('|');
+
+                if (res == null) return 0;
+
+                string id = res[0];
+                string name = res[1];
+                string url = res[2];
+
+                bd.InsertUpdateBD($"UPDATE categories SET `status`='---' WHERE id = '{id}';");
+
+                ParsePodCategoryUniversal(instance, project, url, name);
+            }
 
             return 0;
         }
@@ -90,9 +108,64 @@ namespace Kufar
         }
 
 
+        public static void ParsePodCategoryBitTexnica(Instance instance, IZennoPosterProjectModel p)
+        {
+            //instance.ClearCookie();
+            BD bd = new BD(connectBD);
+            Tab tab = instance.ActiveTab;
+
+            tab.NavigateAndWait("https://www.kufar.by/listings?prn=15000&rgn=4&ar=12", 2000);
+
+            string query = "INSERT INTO categories (`mainСategory`, `category1`, `linkСategory1`, `status`) VALUES ('Бытовая техника','{0}', '{1}', '---')";
+            string xpath = "//div[@data-name = 'left_menu']//li//a";
+            AddBdCategory(instance, p, xpath, query);
 
 
-        static void AddBdCategory(Instance instance, IZennoPosterProjectModel p, string xPathColEl, string queryFormat)
+
+
+        }
+
+        public static void ParsePodCategoryKompTexnica(Instance instance, IZennoPosterProjectModel p)
+        {
+            //instance.ClearCookie();
+            BD bd = new BD(connectBD);
+            Tab tab = instance.ActiveTab;
+            string mainurl = "https://www.kufar.by/listings?prn=16000&rgn=4&ar=12";
+
+            tab.NavigateAndWait(mainurl, 2000);
+
+            string query = "INSERT INTO categories (`mainСategory`, `category1`, `linkСategory1`, `status`) VALUES ('Компьютерная техника','{0}', '{1}', '---')";
+            string xpath = "//div[@data-name = 'left_menu']//li//a";
+
+            AddBdCategory(instance, p, xpath, query, mainurl);
+
+
+
+
+        }
+
+
+        public static void ParsePodCategoryUniversal(Instance instance, IZennoPosterProjectModel p, string mainurl, string name)
+        {
+            //instance.ClearCookie();
+            BD bd = new BD(connectBD);
+            Tab tab = instance.ActiveTab;
+
+
+            tab.NavigateAndWait(mainurl, 2000);
+
+            string query = "INSERT INTO categories (`mainСategory`, `category1`, `linkСategory1`, `status`) VALUES ('" + name + "','{0}', '{1}', '---')";
+            string xpath = "//div[@data-name = 'left_menu']//li//a";
+
+            AddBdCategory(instance, p, xpath, query, mainurl);
+
+
+
+
+        }
+
+
+        static void AddBdCategory(Instance instance, IZennoPosterProjectModel p, string xPathColEl, string queryFormat, string linkMainCategory = "")
         {
             BD bd = new BD(connectBD);
             //парсим категории
@@ -102,7 +175,10 @@ namespace Kufar
             foreach (var el in colEl)
             {
                 string nameCategory = el.InnerText.Trim();
-                string linkCategory = el.GetAttribute("href").Trim() + "&typ=sell&sort=lst.d&size=30&cur=BYR&rgn=4&ar=12";
+                string linkCategory = el.GetAttribute("href").Trim(); //+ "&typ=sell&sort=lst.d&size=30&cur=BYR&rgn=4&ar=12";
+
+
+                if (linkCategory == linkMainCategory) continue;
 
                 Send.InfoToLog(p, $"{nameCategory} - {linkCategory}");
 

@@ -30,8 +30,11 @@ namespace Kufar
             int executionResult = 0;
 
 			// Выполнить группу действий ActionGroup001
-			executionResult = ActionGroup001.Execute(instance, project);
-			if (executionResult != 0) return executionResult;
+			//executionResult = ActionGroup001.Execute(instance, project);
+
+            executionResult = Parser.Execute(instance, project);
+
+            if (executionResult != 0) return executionResult;
 
             return executionResult;
         }
