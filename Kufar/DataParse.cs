@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Kufar
 {
@@ -21,8 +17,11 @@ namespace Kufar
         public string Title { get; set; }
         public string Price { get; set; }
         public string UserName { get; set; }
-       
 
+        public DateTime updateDate { get; set; }
+
+        /// <summary>Состояние (новое, б/у)</summary>
+        public string condition { get; set; }
 
     }
 }

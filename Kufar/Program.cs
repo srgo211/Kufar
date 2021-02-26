@@ -1,4 +1,6 @@
-﻿using ZennoLab.CommandCenter;
+﻿using System;
+using System.Diagnostics;
+using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace Kufar
@@ -19,13 +21,22 @@ namespace Kufar
             int executionResult = 0;
 
             Send.InfoToLog(project, "Старт шаблона");
+            try
+            {
+                Send.InfoToLog(project, project.Directory);
+            }
+            catch(Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+            string pathProfile = project.Directory + @"\profile\kufar_profile.zpprofile";
 
             // Выполнить группу действий ActionGroup001
             //executionResult = ActionGroup001.Execute(instance, project);
 
-            //executionResult = Parser.Execute(instance, project);
+            executionResult = Parser.Execute(instance, project, false);
 
-            string pathProfile = project.Directory + @"\profile\kufar_profile.zpprofile";
+            //string pathProfile = project.Directory + @"\profile\kufar_profile.zpprofile";
             string proxy = "45.89.231.240:55762:xHTsepsS:Tb9qBfym";
             string item = "120090110";
 

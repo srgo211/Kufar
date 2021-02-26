@@ -18,37 +18,53 @@ namespace Kufar
         /// <param name="instance">Объект инстанса выделеный для данного скрипта</param>
         /// <param name="project">Объект проекта выделеный для данного скрипта</param>
         /// <returns>Код выполнения группы действий</returns>
-        public static int Execute(Instance instance, IZennoPosterProjectModel project)
+        public static int Execute(Instance instance, IZennoPosterProjectModel project, bool checkGet = true)
         {
             string userAgent = project.Profile.UserAgent;
             string url = "https://www.kufar.by/listings?rgn=4&ar=12";
-            url = "https://www.kufar.by/listings?rgn=4&ar=12&cursor=eyJ0IjoiYWJzIiwiZiI6ZmFsc2UsInAiOjF9";
+
 
             string res = string.Empty;
-            using (var request = new HttpRequest())
+
+            //ПРоверка способа парсинга (Веб или запросы)
+            if (checkGet)
             {
-                request.UserAgent = userAgent;
+                using (var request = new HttpRequest())
+                {
+                    request.UserAgent = userAgent;
 
-                // Отправляем запрос.
-                HttpResponse response = request.Get(url);
+                    // Отправляем запрос.
+                    HttpResponse response = request.Get(url);
 
-                // Принимаем тело сообщения в виде строки.
-                res = response.ToString();
+                    // Принимаем тело сообщения в виде строки.
+                    res = response.ToString();
+
+
+                }
+            }
+            else
+            {
+                instance.ActiveTab.NavigateAndWait(url, 300);
+
+                res = instance.ActiveTab.DomText;
 
 
             }
 
-            //(?<=type="application/json">)[\w\W]*?(?=</script>)
-            string jsonResult = new Regex("(?<=type=\"application/json\">)[\\w\\W]*?(?=</script>)").Match(res).ToString();
+            //выдергиваем регуляркой данные
+            string jsonResult = new Regex("(?<=id=\"__NEXT_DATA__\" type=\"application/json\">)[\\w\\W]*?(?=</script>)").Match(res).ToString();
 
+            //проверка на пусттоту
             if (string.IsNullOrEmpty(jsonResult)) return -1;
 
+            //получаем json формат
             dynamic json = JObject.Parse(jsonResult);
 
+            //Перебираем полученные данные
             foreach (var j in json?.props?.initialState?.listingGeneralist?.listingElements)
             {
 
-
+                //Формируем данные
                 DataParse data = new DataParse()
                 {
                     Id = j.id,
@@ -58,7 +74,9 @@ namespace Kufar
                     Link = j.adViewLink,
                     Price = j.price.ru,
                     Title = j.title,
-                    UserName = j.userName
+                    UserName = j.userName,
+                    condition = j.adParameters?.condition?.vl,
+                    updateDate = j.updateDate
 
                 };
 
@@ -72,9 +90,10 @@ namespace Kufar
 
             }
 
-
+            //токен для перехода на следующую страницу
             string next = string.Empty;
 
+            //ищем токен
             foreach (var el in json?.props?.initialState?.listingGeneralist?.pagination)
             {
                 if (el.label == "next")
@@ -86,10 +105,22 @@ namespace Kufar
 
             Send.InfoToLog(project, next);
 
+            //проверка токена
+            if (string.IsNullOrWhiteSpace(next)) return 0;
+
+            //формируем новую ссылку, для перехода на следующую страницу
+            url = $"https://www.kufar.by/listings?rgn=4&ar=12&cursor={next}";
+
+
             return 0;
         }
 
-
+        /// <summary>
+        /// Авторизируемся в акк
+        /// </summary>
+        /// <param name="instance"></param>
+        /// <param name="project"></param>
+        /// <param name="pathProfile"></param>
         public static void AvtorizationByProfile(Instance instance, IZennoPosterProjectModel project, string pathProfile)
         {
             project.Profile.Load(pathProfile);
@@ -101,6 +132,14 @@ namespace Kufar
         }
 
 
+        /// <summary>
+        /// Получаем номер телефона
+        /// </summary>
+        /// <param name="instance"></param>
+        /// <param name="project"></param>
+        /// <param name="idItem">id объявления</param>
+        /// <param name="proxy">прокси в фомате (ip:port:login:pass)</param>
+        /// <returns></returns>
         public static string GetNomerPhone(Instance instance, IZennoPosterProjectModel project, string idItem, string proxy = null)
         {
             string userAgent = project.Profile.UserAgent;
@@ -111,29 +150,26 @@ namespace Kufar
 
 
             const string domen = "kufar.by";
+
+            //получаем куки с инстанса (акк должен быть авторизирован)
             string cookies = instance.GetCookie(domen, true);
 
-            //string proxy = "45.89.231.240:55762:xHTsepsS:Tb9qBfym";
 
+            //иницилизация кук
             CookieStorage cookieStorage = new CookieStorage();
 
 
-
+            //получаем массив кук из инстанса
             string[] arrCook = cookies.Split(new string[] { ";" }, System.StringSplitOptions.RemoveEmptyEntries);
 
+            //добавляем куки
             foreach (var el in arrCook)
             {
                 string[] elArr = el.Split('=');
                 var cook = new Cookie(elArr[0].Trim(), elArr[1].Trim());
                 cook.Domain = domen;
                 cookieStorage.Add(cook);
-
             }
-
-
-
-
-
 
             using (var rq = new HttpRequest())
             {
@@ -156,8 +192,7 @@ namespace Kufar
 
             dynamic json = JObject.Parse(res);
 
-            //Send.InfoToLog(project, json.ToSring());
-
+            Send.InfoToLog(project, res);
             return json?.phone;
         }
 
