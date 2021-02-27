@@ -172,12 +172,15 @@ namespace Kufar
             {
                 j = json?.props?.initialState?.adView;
                 if (j == null) return false;
+
+                parseJson(p,json);
+                return true;
             }
 
 
             var result = j.result;
-            if (result != null)
-            {
+            if (result == null) return false;
+            
 
                 foreach (var parameter in result.ad_parameters)
                 {
@@ -186,7 +189,7 @@ namespace Kufar
                     oldAdParameters.Add(key, value);
                 }
 
-            }
+            
 
             data.Id = result.ad_id;
             data.Link = result.ad_link;
@@ -451,6 +454,88 @@ namespace Kufar
         }
 
 
+
+        static bool parseJson(IZennoPosterProjectModel p, dynamic json)
+        {
+            
+
+            if (json == null) return false;
+
+            DataParse data = new DataParse();
+            Dictionary<string, string> oldAdParameters = new Dictionary<string, string>();
+
+            dynamic j = json?.props?.initialState?.adView?.data;
+
+            var oldAdParameter = j.oldAdParameters ?? j.initial?.ad_parameters;
+            if (oldAdParameter != null)
+            {
+                foreach (var parameter in oldAdParameter)
+                {
+                    string key = parameter.pl;
+
+                    switch (key.ToLower())
+                    {
+                        case "координаты":
+                        case "товары с куфар доставкой":
+                        case "товары с куфар оплатой":
+                        case "тип сделки":
+                        case "тип оплаты":
+                            continue;
+
+                        case "состояние":
+                            data.condition = parameter.vl;
+                            continue;
+
+                        default:
+                            break;
+                    }
+
+
+                    string value = String.Empty;
+                    try
+                    {
+                        value = parameter.vl;
+                    }
+                    catch { continue; }
+
+                    oldAdParameters.Add(key, value);
+                }
+            }
+
+
+
+
+            data.Id = j.id;
+            data.Link = j.adViewFriendlyLink ?? j.adViewLink;
+            data.Idcategory = j.category;
+            data.CategoryName = j.categoryName;
+            data.Price = j.price.by; //цена (полный формат - в копейках)
+            data.updateDate = j.updateDate;
+            data.descriptions = j.descriptions;
+            data.oldAdParameters = oldAdParameters; //получаем доп. описание (тех. харк-ки)
+            data.Title = j.subject ?? j.title;
+
+
+            data.UserName = j.name ?? j.userName;
+
+
+            
+
+            //получаем фото
+            var arrImages = j.allImages ?? j.gallery?.images;
+            if (arrImages != null)
+            {
+                var arr = arrImages.ToObject<string[]>();
+                data.images = arr;
+            }
+
+
+
+
+            logData(p, data);
+            return true;
+        }
+
         static void logData(IZennoPosterProjectModel p, DataParse data)
         {
 
@@ -458,18 +543,27 @@ namespace Kufar
                 const int symbol = 30; //кол-во символов (....)
             const string charSymbol = "."; //кол-во символов (....)
             string parametrs = string.Empty;
-            
-            foreach (var el in data.oldAdParameters)
+
+            if (data.oldAdParameters != null)
             {
-                int keyLength = el.Key.Length;
+                foreach (var el in data.oldAdParameters)
+                {
+                    int keyLength = el.Key.Length;
 
-                int countPresent = symbol - keyLength;
-                string symb = String.Empty;
-                for (int a = 0; a < countPresent; a++) symb += charSymbol;
+                    int countPresent = symbol - keyLength;
+                    string symb = String.Empty;
+                    for (int a = 0; a < countPresent; a++) symb += charSymbol;
 
-                parametrs += $"{el.Key}{symb}{el.Value}\n";
+                    parametrs += $"{el.Key}{symb}{el.Value}\n";
+                }
             }
 
+
+            string img = string.Empty;
+            if (data.images != null)
+            {
+                img = String.Join("\n", data.images);
+            }
 
             string log =
                  $"Id- {data.Id}\n" +
@@ -478,11 +572,11 @@ namespace Kufar
                  $"Название- {data.Title}\n" +
                  $"Цена товара- {data.Price}\n" +
                  $"Состояние товара- {data.condition}\n" +
-                 $"Хар-ки товара- {parametrs}\n" +
+                 $"Хар-ки товара- \n{parametrs}\n" +
                  $"Описание товара- {data.descriptions}\n" +
                  $"ID категории- {data.Idcategory}\n" +
                  $"ID ПОДкатегории- {data.IdParentCategory}\n" +
-                 "Ссылки на фото - " + String.Join("\n", data.images) + "\n" +
+                 $"Ссылки на фото - {img}\n" +
                  $"Номер телефона- {data.phoneNomer}\n" +
                  $"Дата публикации- {data.updateDate}\n" +
                  $"Имя пользователя- {data.UserName}\n";
