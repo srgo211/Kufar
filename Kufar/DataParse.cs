@@ -34,8 +34,9 @@ namespace Kufar
 
         /// <summary>Описание товара</summary>
         public string descriptions { get; set; }
-        p
 
+        /// <summary>Номер телефона</summary>
+        public string phoneNomer { get; set; }
         #endregion
 
     }
