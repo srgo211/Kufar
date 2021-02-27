@@ -345,7 +345,7 @@ namespace Kufar
         {
             string userAgent = project.Profile.UserAgent;
 
-            //ICookieContainer cookieContainer = project.Profile.CookieContainer;
+
             string url = $"https://cre-api.kufar.by/items-search/v1/engine/v1/item/{idItem}/phone";
             string res = string.Empty;
 

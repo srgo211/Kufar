@@ -7,6 +7,24 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace Kufar
 {
+
+    public enum Status
+    {
+        /// <summary>В работе</summary>
+        run,
+        /// <summary>Выполнен успешно </summary>
+        ok,
+        /// <summary>Ошибка выполнения </summary>
+        err,
+        /// <summary>Остановлен </summary>
+        stop,
+
+        /// <summary>Опубликован в region</summary>
+        publih,
+        /// <summary>Спарсили с куфар</summary>
+        parse
+    }
+
     /// <summary>
     /// Класс для запуска выполнения скрипта
     /// </summary>
@@ -89,69 +107,68 @@ namespace Kufar
 
 
         /// <summary> Парсим номер телефона из объявлений </summary>
-        public List<DataParse> GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, List<DataParse> dataParses, string proxy = null)
+        public void GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, int IdFromBD, string proxy = null)
         {
-            List<DataParse> newDataParse = new List<DataParse>();
-            foreach (var data in dataParses)
+
+
+
+            string phone = null;
+            try
+            {
+                phone = Parser.GetNomerPhone(instance, project, data.Id.ToString(), proxy);
+                data.phoneNomer = phone;
+            }
+            catch (Exception ex)
             {
 
-                string phone = null;
-                try
+
+                Send.InfoToLog(project, $"{data.Link}\n" +
+                                   $"{ex.Message}\n"
+                                   //$"{ex.StackTrace}\n" +
+                                   //$"{ex.InnerException}\n" +
+                                   //$"{ex.Source}\n" +
+                                   //$"{ex.Data}\n"
+                                   );
+
+                if (ex.Message.Contains("429"))
                 {
+                    System.Threading.Thread.Sleep(2000);
                     phone = Parser.GetNomerPhone(instance, project, data.Id.ToString(), proxy);
+                    if (string.IsNullOrEmpty(phone)) continue;
+                    data.phoneNomer = phone;
+
+                }
+                if (ex.Message.Contains("400"))
+                {
+                    Send.InfoToLog(project, "нет кнопки позвонить");
+                    continue;
+                }
+
+                if (ex.Message.Contains("401"))
+                {
+                    //должен быть номер
+                    Send.InfoToLog(project, "не авторизован, слетела авторизации");
+
+
+                    //получаем номер с помощью ВЕБ версии
+                    phone = Parser.GetNomerPhoneWeb(instance, project, data.Link, proxy);
+                    Send.InfoToLog(project, phone);
+
+
+                    //получаем номер с помощью ВЕБ версии
+
+                    if (string.IsNullOrEmpty(phone)) continue;
                     data.phoneNomer = phone;
                 }
-                catch (Exception ex)
-                {
-
-
-                    Send.InfoToLog(project, $"{data.Link}\n" +
-                                       $"{ex.Message}\n"
-                                       //$"{ex.StackTrace}\n" +
-                                       //$"{ex.InnerException}\n" +
-                                       //$"{ex.Source}\n" +
-                                       //$"{ex.Data}\n"
-                                       );
-
-                    if (ex.Message.Contains("429"))
-                    {
-                        System.Threading.Thread.Sleep(2000);
-                        phone = Parser.GetNomerPhone(instance, project, data.Id.ToString(), proxy);
-                        if (string.IsNullOrEmpty(phone)) continue;
-                        data.phoneNomer = phone;
-
-                    }
-                    if (ex.Message.Contains("400"))
-                    {
-                        Send.InfoToLog(project, "нет кнопки позвонить");
-                        continue;
-                    }
-
-                    if (ex.Message.Contains("401"))
-                    {
-                        //должен быть номер
-                        Send.InfoToLog(project, "не авторизован, слетела авторизации");
-
-
-                        //получаем номер с помощью ВЕБ версии
-                        phone = Parser.GetNomerPhoneWeb(instance, project, data.Link, proxy);
-                        Send.InfoToLog(project, phone);
-
-
-                        //получаем номер с помощью ВЕБ версии
-
-                        if (string.IsNullOrEmpty(phone)) continue;
-                        data.phoneNomer = phone;
-                    }
 
 
 
 
 
 
-                }
-                newDataParse.Add(data);
             }
+            newDataParse.Add(data);
+
 
             return newDataParse;
 

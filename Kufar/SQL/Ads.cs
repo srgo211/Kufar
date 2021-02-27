@@ -3,6 +3,9 @@ using System;
 
 namespace Kufar.SQL
 {
+
+
+
     public class Ads
     {
         [PrimaryKey, AutoIncrement, Unique]
@@ -51,8 +54,8 @@ namespace Kufar.SQL
         /// <summary>Дата добавления/обновления записи в БД</summary>
         public DateTime dateWrite { get; set; } = DateTime.Now;
 
-        /// <summary>проверка номера телефона</summary>
-        public bool checkPhone { get; set; } = false;
+        /// <summary>статус </summary>
+        public Status status { get; set; } = Status.run;
 
     }
 }

@@ -17,6 +17,8 @@ namespace Kufar
         /// <summary>получаем список данных с номерами телефонов</summary>
         List<DataParse> GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, List<DataParse> dataParses, string proxy = null);
 
+        List<DataParse> GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, int IdFromBD, string proxy = null);
+
         /// <summary>получаем полную Карточку товара</summary>
         List<DataParse> GetParseDataFromProducts(Instance instance, IZennoPosterProjectModel project, List<DataParse> dataParses);
 

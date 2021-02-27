@@ -20,6 +20,8 @@ namespace Kufar
         /// <param name="dataParse"></param>
         /// <returns></returns>
         Ads GetAdAndUpdateCheckPhoneBD(string pathBD, DataParse dataParse);
+
+        Ads GetAdAndUpdateCheckPhoneBD(string pathBD, int idFromBD);
         void UpdateBD(string pathBD, int idBD);
 
         void DeleteBD(string pathBD, int idBD);
