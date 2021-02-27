@@ -7,6 +7,7 @@ namespace Kufar
     interface IWorkingProcedure
     {
 
+
         /// <summary>получаем список спаршенных данных</summary>
         List<DataParse> GetListDataParses(Instance instance, IZennoPosterProjectModel project);
 
@@ -25,8 +26,6 @@ namespace Kufar
         /// <param name="dataParses"></param>
         void AddBD(List<DataParse> dataParses);
     }
-
-
 
 
 

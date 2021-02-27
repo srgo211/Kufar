@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Kufar.SQL;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -8,7 +10,7 @@ namespace Kufar
     /// <summary>
     /// Класс для запуска выполнения скрипта
     /// </summary>
-    public class Program : IZennoExternalCode, IWorkingProcedure
+    public class Program : IZennoExternalCode, IWorkingProcedure, IDataBD
     {
 
 
@@ -29,9 +31,16 @@ namespace Kufar
             string pathProfile = project.Directory + @"\profile\kufar_profile.zpprofile";
             string proxy = "45.89.231.240:55762:xHTsepsS:Tb9qBfym";
 
-            //получаем список всех объявлений
-            var data = GetListDataParses(instance, project);
 
+            string pathBD = project.Directory + @"\kufar.db";
+            //создаем БД
+            CreateBD(project, pathBD);
+
+
+            //получаем список всех объявлений
+            List<DataParse> data = GetListDataParses(instance, project);
+
+            return 0;
             //делаем авторизацию, для сбора номеров телефона
             AvtorizationAccount(instance, project);
 
@@ -60,11 +69,13 @@ namespace Kufar
             return executionResult;
         }
 
+
+        #region Реализация интерфейса 
         /// <summary> Парсим все объявления </summary>
 
         public List<DataParse> GetListDataParses(Instance instance, IZennoPosterProjectModel project)
         {
-            return Parser.Execute(instance, project, countParsePage: 1);
+            return Parser.Execute(instance, project, countParsePage: 1).Result;
         }
 
         /// <summary> Авторизация акк </summary>
@@ -92,31 +103,52 @@ namespace Kufar
                 }
                 catch (Exception ex)
                 {
-                    Send.InfoToLog(project, $"{data.Link}\n" +
-                                            $"{ex.Message}\n" +
-                                            $"{ex.StackTrace}\n" +
-                                            $"{ex.InnerException}\n" +
-                                            $"{ex.Source}\n" +
-                                            $"{ex.Data}\n");
 
-                    if (ex.Message.Contains("429")) System.Threading.Thread.Sleep(2000);
-                    if (ex.Message.Contains("400")) Send.InfoToLog(project, "нет кнопки позвонить");
+
+                    Send.InfoToLog(project, $"{data.Link}\n" +
+                                       $"{ex.Message}\n"
+                                       //$"{ex.StackTrace}\n" +
+                                       //$"{ex.InnerException}\n" +
+                                       //$"{ex.Source}\n" +
+                                       //$"{ex.Data}\n"
+                                       );
+
+                    if (ex.Message.Contains("429"))
+                    {
+                        System.Threading.Thread.Sleep(2000);
+                        phone = Parser.GetNomerPhone(instance, project, data.Id.ToString(), proxy);
+                        if (string.IsNullOrEmpty(phone)) continue;
+                        data.phoneNomer = phone;
+
+                    }
+                    if (ex.Message.Contains("400"))
+                    {
+                        Send.InfoToLog(project, "нет кнопки позвонить");
+                        continue;
+                    }
 
                     if (ex.Message.Contains("401"))
                     {
                         //должен быть номер
                         Send.InfoToLog(project, "не авторизован, слетела авторизации");
 
-                        //string ip, int port, string type, string login = null, string password = null,
-                        //xHTsepsS: Tb9qBfym@45.89.231.240:55762
-
-                        proxy = $"{login}:{password}@{ip}:{port}";
 
                         //получаем номер с помощью ВЕБ версии
-                        phone = Parser.GetNomerPhoneWeb(instance, project, data.Id.ToString(), proxy);
+                        phone = Parser.GetNomerPhoneWeb(instance, project, data.Link, proxy);
+                        Send.InfoToLog(project, phone);
+
+
+                        //получаем номер с помощью ВЕБ версии
+
                         if (string.IsNullOrEmpty(phone)) continue;
                         data.phoneNomer = phone;
                     }
+
+
+
+
+
+
                 }
                 newDataParse.Add(data);
             }
@@ -164,17 +196,56 @@ namespace Kufar
                 if (parse == null) continue;
 
                 parse.phoneNomer = data.phoneNomer;
+                // Parser.logData(project, parse);
+
                 newDataParse.Add(parse);
             }
 
             return newDataParse;
         }
+        #endregion
 
 
+        #region Реализация интерфейса
         /// <summary> Добавляем данные в БД </summary>
         public void AddBD(List<DataParse> dataParses)
         {
             throw new NotImplementedException();
         }
+
+        public void CreateBD(IZennoPosterProjectModel project, string pathBD)
+        {
+
+            //проверка есть ли БД по этому пути
+            if (!File.Exists(pathBD))
+            {
+                //создаем БД
+                new Request().CreateBD(pathBD);
+                Send.InfoToLog(project, pathBD);
+            }
+
+
+        }
+
+        public void AddBD(string pathBD, DataParse dataParse)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Ads GetAdAndUpdateCheckPhoneBD(string pathBD, DataParse dataParse)
+        {
+            return new Request().GetAdFromBDForParsePhone(pathBD, dataParse);
+        }
+
+        public void UpdateBD(string pathBD, int idBD)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void DeleteBD(string pathBD, int idBD)
+        {
+            throw new NotImplementedException();
+        }
+        #endregion
     }
 }

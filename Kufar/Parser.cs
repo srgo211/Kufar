@@ -1,9 +1,11 @@
-﻿using Leaf.xNet;
+﻿using Kufar.SQL;
+using Leaf.xNet;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -22,11 +24,12 @@ namespace Kufar
         /// <param name="project">Объект проекта выделеный для данного скрипта</param>
         /// <param name="checkGet">делаем Get запрос - true, Веб - false</param>
         /// <returns>Код выполнения группы действий</returns>
-        public static List<DataParse> Execute(Instance instance, IZennoPosterProjectModel project, bool checkGet = true, int countParsePage = -1, string proxy = null)
+        public static async Task<List<DataParse>> Execute(Instance instance, IZennoPosterProjectModel project, bool checkGet = true, int countParsePage = -1, string proxy = null)
         {
             string url = baseUrl;
+            string pathBD = project.Directory + @"\kufar.db";
             List<DataParse> dataParses = new List<DataParse>();
-            int correntPage = 0; //номер текущей страницы
+            int correntPage = 1; //номер текущей страницы
 
             while (true)
             {
@@ -76,8 +79,12 @@ namespace Kufar
                     //добавляем данные
                     dataParses.Add(data);
 
+
+                    new Request().InsertBD(pathBD, data);
+
+
                     correntAdPage++;
-                    Send.InfoToLog(project, $"Спарсили {correntAdPage} обявление на странице {correntPage + 1}");
+                    Send.InfoToLog(project, $"Спарсили {correntAdPage} обявление на странице {correntPage}");
                 }
 
 
@@ -245,7 +252,7 @@ namespace Kufar
 
             data.images = arr;
 
-            logData(p, data);
+            //logData(p, data);
 
             return data;
         }
@@ -423,18 +430,22 @@ namespace Kufar
 
             dynamic json = JObject.Parse(res);
 
-            Send.InfoToLog(project, res);
+            //Send.InfoToLog(project, res);
             return json?.phone;
         }
 
-        public static string GetNomerPhoneWeb(Instance instance, IZennoPosterProjectModel project, string idItem, string proxy = null)
+        public static string GetNomerPhoneWeb(Instance instance, IZennoPosterProjectModel project, string url, string proxy = null)
         {
+            instance.LoadPictures = false; //картинки
+            instance.UseAdds = false; //реклама
+            instance.UseMedia = false; //видео/аудио
             //кнопка позвонить
             const string xpBtnCall = "//button[@data-name = 'call_button']";
 
-            const string xpPhone = "//div[@data-name='phone-number-modal']";
+            const string xpPhone = "//div[@data-name='phone-number-modal']/a";
 
-            string url = $"https://cre-api.kufar.by/items-search/v1/engine/v1/item/{idItem}/phone";
+            if (string.IsNullOrWhiteSpace(url)) return null;
+
             string res = string.Empty;
 
             if (!string.IsNullOrWhiteSpace(proxy))
@@ -454,14 +465,14 @@ namespace Kufar
 
             try
             {
-                tab.NavigateAndWait(url).WaitElement(xpBtnCall, 2000, exceptionMessage: "Не нашли кнопку позвонить");
+                tab.NavigateAndWait(url, 500).WaitElement(xpBtnCall, 2000, exceptionMessage: "Не нашли кнопку позвонить");
             }
             catch
             {
                 return null;
             }
 
-            if (tab.Click(xpBtnCall).CheckHtmlElement(xpPhone, 3000))
+            if (tab.Click(xpBtnCall, 500).CheckHtmlElement(xpPhone, 3000))
             {
                 return tab.FindElementByXPath(xpPhone, 0).InnerText.Trim();
             }
@@ -662,7 +673,7 @@ namespace Kufar
         }
 
 
-        static void logData(IZennoPosterProjectModel p, DataParse data)
+        public static void logData(IZennoPosterProjectModel p, DataParse data)
         {
 
 
