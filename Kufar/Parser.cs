@@ -22,70 +22,103 @@ namespace Kufar
         /// <param name="project">Объект проекта выделеный для данного скрипта</param>
         /// <param name="checkGet">делаем Get запрос - true, Веб - false</param>
         /// <returns>Код выполнения группы действий</returns>
-        public static int Execute(Instance instance, IZennoPosterProjectModel project, bool checkGet = true)
+        public static List<DataParse> Execute(Instance instance, IZennoPosterProjectModel project, bool checkGet = true, int countParsePage = -1, string proxy = null)
         {
             string url = baseUrl;
+            List<DataParse> dataParses = new List<DataParse>();
+            int correntPage = 0; //номер текущей страницы
 
-            string res = GetAndWebResult(instance, project,
-                                        checkGet: true,
-                                        proxy: null,
-                                        url: url);
-
-            //получаем json формат
-            dynamic json = ResultJson(res);
-
-            //Перебираем полученные данные
-            foreach (var j in json?.props?.initialState?.listingGeneralist?.listingElements)
+            while (true)
             {
+                string res = GetAndWebResult(instance, project,
+                                            url: url,
+                                            checkGet: checkGet,
+                                            proxy: proxy);
 
-                //Формируем данные
-                DataParse data = new DataParse()
+                if (res == null)
                 {
-                    Id = j.id,
-                    CategoryName = j.categoryName,
-                    Idcategory = j.category,
-                    IdParentCategory = j.parent,
-                    Link = j.adViewLink,
-                    Price = j.price.ru,
-                    Title = j.title,
-                    UserName = j.userName,
-                    condition = j.adParameters?.condition?.vl,
-                    updateDate = j.updateDate
-
-                };
-
-                Send.InfoToLog(project, $"Id - {data.Id}\n" +
-                                        $"CategoryName - {data.CategoryName}\n" +
-                                        $"Link - {data.Link}\n" +
-                                        $"Price - {data.Price}\n" +
-                                        $"Title  - {data.Title }+ \n");
-
-
-
-            }
-
-            //токен для перехода на следующую страницу
-            string next = string.Empty;
-            //ищем токен
-            foreach (var el in json?.props?.initialState?.listingGeneralist?.pagination)
-            {
-                if (el.label == "next")
-                {
-                    next = el.token;
-                    break;
+                    Send.InfoToLog(project, $"Пришел пустой ответ\n" +
+                                            $"url: {url}\n" +
+                                            $"Страница парсинга {correntPage}\n");
+                    return null;
                 }
-            }
 
-            Send.InfoToLog(project, next);
+                //получаем json формат
+                dynamic json = ResultJson(res);
 
-            //проверка токена
-            if (string.IsNullOrWhiteSpace(next)) return 0;
+                int correntAdPage = 0; //номер текущего объявления на странице
+                //Перебираем полученные данные
+                foreach (var j in json?.props?.initialState?.listingGeneralist?.listingElements)
+                {
 
-            //формируем новую ссылку, для перехода на следующую страницу
-            url = $"{baseUrl}&cursor={next}";
+                    //Формируем данные
+                    DataParse data = new DataParse()
+                    {
+                        Id = j.id,
+                        CategoryName = j.categoryName,
+                        Idcategory = j.category,
+                        IdParentCategory = j.parent,
+                        Link = j.adViewLink,
+                        Price = j.price.ru,
+                        Title = j.title,
+                        UserName = j.userName,
+                        condition = j.adParameters?.condition?.vl,
+                        updateDate = j.updateDate
+
+                    };
+
+                    Send.InfoToLog(project, $"Id - {data.Id}\n" +
+                                            $"CategoryName - {data.CategoryName}\n" +
+                                            $"Link - {data.Link}\n" +
+                                            $"Price - {data.Price}\n" +
+                                            $"Title  - {data.Title }+ \n");
+
+                    //добавляем данные
+                    dataParses.Add(data);
+
+                    correntAdPage++;
+                    Send.InfoToLog(project, $"Спарсили {correntAdPage} обявление на странице {correntPage + 1}");
+                }
 
 
-            return 0;
+                //проврка на кол-во страниц для парсинга
+                if (countParsePage != -1)
+                {
+                    if (correntPage >= countParsePage)
+                    {
+                        Send.InfoToLog(project, $"Завершаем основной парсинг, прошли: {correntPage}");
+                        return dataParses;
+                    }
+
+                }
+                //прибавляем текущую страницу
+                correntPage++;
+                Send.InfoToLog(project, $"Спарсили: {correntPage} страниц");
+
+
+                //токен для перехода на следующую страницу
+                string next = string.Empty;
+                //ищем токен
+                foreach (var el in json?.props?.initialState?.listingGeneralist?.pagination)
+                {
+                    if (el.label == "next")
+                    {
+                        next = el.token;
+                        break;
+                    }
+                }
+
+                Send.InfoToLog(project, next);
+
+                //проверка токена
+                if (string.IsNullOrWhiteSpace(next)) return dataParses;
+
+                //формируем новую ссылку, для перехода на следующую страницу
+                url = $"{baseUrl}&cursor={next}";
+
+
+
+            }//конец цикла
         }
 
         /// <summary>
@@ -149,17 +182,17 @@ namespace Kufar
 
         }
 
-        public static bool ProductCard(Instance i, IZennoPosterProjectModel p, string url, bool checkGet = true, string proxy = null)
+        public static DataParse ProductCard(Instance i, IZennoPosterProjectModel p, string url, bool checkGet = true, string proxy = null)
         {
-            if (string.IsNullOrWhiteSpace(url)) return false;
+            if (string.IsNullOrWhiteSpace(url)) return null;
 
             string res = GetAndWebResult(i, p, url, checkGet, proxy);
 
-            if (string.IsNullOrWhiteSpace(res)) return false;
+            if (string.IsNullOrWhiteSpace(res)) return null;
 
             dynamic json = ResultJson(res);
 
-            if (json == null) return false;
+            if (json == null) return null;
 
             DataParse data = new DataParse();
             Dictionary<string, string> oldAdParameters = new Dictionary<string, string>();
@@ -171,25 +204,25 @@ namespace Kufar
             if (j == null)
             {
                 j = json?.props?.initialState?.adView;
-                if (j == null) return false;
+                if (j == null) return null;
 
-                parseJson(p,json);
-                return true;
+
+                return parseJson(p, json);
             }
 
 
             var result = j.result;
-            if (result == null) return false;
-            
+            if (result == null) return null;
 
-                foreach (var parameter in result.ad_parameters)
-                {
-                    string key = parameter.pl;
-                    string value = parameter.vl;
-                    oldAdParameters.Add(key, value);
-                }
 
-            
+            foreach (var parameter in result.ad_parameters)
+            {
+                string key = parameter.pl;
+                string value = parameter.vl;
+                oldAdParameters.Add(key, value);
+            }
+
+
 
             data.Id = result.ad_id;
             data.Link = result.ad_link;
@@ -202,7 +235,7 @@ namespace Kufar
 
 
             var formattedAdView = j.formattedAdView;
-            if (formattedAdView == null) return false;
+            if (formattedAdView == null) return null;
             data.Title = formattedAdView.subject;
             data.CategoryName = formattedAdView.categoryName;
 
@@ -210,33 +243,25 @@ namespace Kufar
             var arrImages = formattedAdView.gallery?.images;
             var arr = arrImages.ToObject<string[]>();
 
-            //IList<string> images = formattedAdView.gallery?.images; //получаем фото
             data.images = arr;
-            //data.descriptions = j.formattedAdView?.descriptions; //получае описание товара/услуги
-
-
-            //data.condition = null;
-            //data.IdParentCategory = null;
-            //data.phoneNomer = null;
-
 
             logData(p, data);
 
-            return true;
+            return data;
         }
 
 
-        public static bool ProductCardApartments(Instance i, IZennoPosterProjectModel p, string url, bool checkGet = true, string proxy = null)
+        public static DataParse ProductCardApartments(Instance i, IZennoPosterProjectModel p, string url, bool checkGet = true, string proxy = null)
         {
-            if (string.IsNullOrWhiteSpace(url)) return false;
+            if (string.IsNullOrWhiteSpace(url)) return null;
 
             string res = GetAndWebResult(i, p, url, checkGet, proxy);
 
-            if (string.IsNullOrWhiteSpace(res)) return false;
+            if (string.IsNullOrWhiteSpace(res)) return null;
 
             dynamic json = ResultJson(res);
 
-            if (json == null) return false;
+            if (json == null) return null;
 
             DataParse data = new DataParse();
             Dictionary<string, string> oldAdParameters = new Dictionary<string, string>();
@@ -298,7 +323,7 @@ namespace Kufar
 
             logData(p, data);
 
-            return true;
+            return data;
         }
 
         /// <summary>
@@ -318,27 +343,64 @@ namespace Kufar
             string res = string.Empty;
 
 
-            const string domen = "kufar.by";
 
-            //получаем куки с инстанса (акк должен быть авторизирован)
-            string cookies = instance.GetCookie(domen, true);
 
+            ICookieContainer cookieContainer = project.Profile.CookieContainer;
+
+            IEnumerable<string> domains = cookieContainer.Domains;
 
             //иницилизация кук
             CookieStorage cookieStorage = new CookieStorage();
-
-
-            //получаем массив кук из инстанса
-            string[] arrCook = cookies.Split(new string[] { ";" }, System.StringSplitOptions.RemoveEmptyEntries);
-
-            //добавляем куки
-            foreach (var el in arrCook)
+            foreach (var domen in domains)
             {
-                string[] elArr = el.Split('=');
-                var cook = new Cookie(elArr[0].Trim(), elArr[1].Trim());
-                cook.Domain = domen;
-                cookieStorage.Add(cook);
+                //получаем куки с инстанса (акк должен быть авторизирован)
+                string cookies = instance.GetCookie(domen, true);
+
+
+                if (cookies.Contains("!bidswitch"))
+                {
+                    Send.InfoToLog(project, "");
+                }
+
+
+                //получаем массив кук из инстанса
+                string[] arrCook = cookies.Split(new string[] { ";" }, System.StringSplitOptions.RemoveEmptyEntries);
+
+                //добавляем куки
+                foreach (var el in arrCook)
+                {
+                    if (el.Contains("=="))
+                    {
+                        string c = el.Replace("==", "||");
+
+                        var Arr = c.Split('=');
+                        Cookie cooki = new Cookie(Arr[0].Trim(), Arr[1].Trim().Replace("||", "=="));
+                        cooki.Domain = domen;
+                        cookieStorage.Add(cooki);
+                        continue;
+
+                    }
+
+
+
+
+                    string[] elArr = el.Split('=');
+
+                    string key = elArr[0].Trim();
+                    string value = elArr[1].Trim();
+
+                    if (value.Contains("!bidswitch")) continue;
+
+                    var cook = new Cookie(key, value);
+                    cook.Domain = domen;
+                    cookieStorage.Add(cook);
+                }
+
             }
+
+
+
+
 
             using (var rq = new HttpRequest())
             {
@@ -365,7 +427,51 @@ namespace Kufar
             return json?.phone;
         }
 
+        public static string GetNomerPhoneWeb(Instance instance, IZennoPosterProjectModel project, string idItem, string proxy = null)
+        {
+            //кнопка позвонить
+            const string xpBtnCall = "//button[@data-name = 'call_button']";
 
+            const string xpPhone = "//div[@data-name='phone-number-modal']";
+
+            string url = $"https://cre-api.kufar.by/items-search/v1/engine/v1/item/{idItem}/phone";
+            string res = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(proxy))
+            {
+                proxy = ConvertProxy(proxy);
+
+                instance.SetProxy(proxy,
+                    useProxifier: true,
+                    emulateGeolocation: true,
+                    emulateTimezone: true,
+                    emulateWebrtc: true
+                    );
+            }
+
+
+            Tab tab = instance.ActiveTab;
+
+            try
+            {
+                tab.NavigateAndWait(url).WaitElement(xpBtnCall, 2000, exceptionMessage: "Не нашли кнопку позвонить");
+            }
+            catch
+            {
+                return null;
+            }
+
+            if (tab.Click(xpBtnCall).CheckHtmlElement(xpPhone, 3000))
+            {
+                return tab.FindElementByXPath(xpPhone, 0).InnerText.Trim();
+            }
+
+
+            return null;
+
+
+
+        }
 
         #region Вспомогательные методы
         /// <summary>
@@ -455,11 +561,11 @@ namespace Kufar
 
 
 
-        static bool parseJson(IZennoPosterProjectModel p, dynamic json)
+        static DataParse parseJson(IZennoPosterProjectModel p, dynamic json)
         {
-            
 
-            if (json == null) return false;
+
+            if (json == null) return null;
 
             DataParse data = new DataParse();
             Dictionary<string, string> oldAdParameters = new Dictionary<string, string>();
@@ -519,7 +625,7 @@ namespace Kufar
             data.UserName = j.name ?? j.userName;
 
 
-            
+
 
             //получаем фото
             var arrImages = j.allImages ?? j.gallery?.images;
@@ -533,14 +639,34 @@ namespace Kufar
 
 
             logData(p, data);
-            return true;
+            return data;
         }
+
+
+
+
+        static string ConvertProxy(string proxy, bool formatZenno = true)
+        {
+
+            if (proxy.Contains("@") || !formatZenno) return proxy;
+
+            var arrProxy = proxy.Trim().Split(':');
+            string ip = arrProxy[0];
+            string port = arrProxy[1];
+            string login = arrProxy[2];
+            string password = arrProxy[3];
+
+            string newProxy = $"{login}:{password}@{ip}:{port}";
+            return newProxy;
+
+        }
+
 
         static void logData(IZennoPosterProjectModel p, DataParse data)
         {
 
 
-                const int symbol = 30; //кол-во символов (....)
+            const int symbol = 30; //кол-во символов (....)
             const string charSymbol = "."; //кол-во символов (....)
             string parametrs = string.Empty;
 

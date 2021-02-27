@@ -139,6 +139,7 @@
     <Compile Include="ActionGroup001.cs" />
     <Compile Include="BD.cs" />
     <Compile Include="DataParse.cs" />
+    <Compile Include="IWorkingProcedure.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="Send.cs" />
     <Compile Include="Program.cs" />
