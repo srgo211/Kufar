@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -15,7 +14,7 @@ namespace Kufar
     {
         public const string connectBD = "Server=localhost;Database=kufar;Uid=root;Pwd=vertrigo;Port=3306;CharSet=utf8;Pooling=True;";
         public const string baseUrl = "https://www.kufar.by/listings?rgn=4&ar=12";
-
+        public const int errAllCount = 20; //ВСЕГО ошибок подряд при добавлении в БД
         public const string rgxParseJson = "(?<=id=\"__NEXT_DATA__\" type=\"application/json\">)[\\w\\W]*?(?=</script>)";
         /// <summary>
         /// Метод выполнения группы действий
@@ -24,11 +23,11 @@ namespace Kufar
         /// <param name="project">Объект проекта выделеный для данного скрипта</param>
         /// <param name="checkGet">делаем Get запрос - true, Веб - false</param>
         /// <returns>Код выполнения группы действий</returns>
-        public static async Task<List<DataParse>> Execute(Instance instance, IZennoPosterProjectModel project, bool checkGet = true, int countParsePage = -1, string proxy = null)
+        public static void Execute(Instance instance, IZennoPosterProjectModel project, bool checkGet = true, int countParsePage = -1, string proxy = null)
         {
             string url = baseUrl;
             string pathBD = project.Directory + @"\kufar.db";
-            List<DataParse> dataParses = new List<DataParse>();
+
             int correntPage = 1; //номер текущей страницы
 
             while (true)
@@ -43,13 +42,14 @@ namespace Kufar
                     Send.InfoToLog(project, $"Пришел пустой ответ\n" +
                                             $"url: {url}\n" +
                                             $"Страница парсинга {correntPage}\n");
-                    return null;
+                    return;
                 }
 
                 //получаем json формат
                 dynamic json = ResultJson(res);
 
                 int correntAdPage = 0; //номер текущего объявления на странице
+                int errAdFromBD = 0; //кол-во ошибок подряд, при добавлении в БД
                 //Перебираем полученные данные
                 foreach (var j in json?.props?.initialState?.listingGeneralist?.listingElements)
                 {
@@ -76,14 +76,26 @@ namespace Kufar
                                             $"Price - {data.Price}\n" +
                                             $"Title  - {data.Title }+ \n");
 
-                    //добавляем данные
-                    dataParses.Add(data);
+                    //добавляем данные в БД
+                    bool check = new Request().InsertBD(data);
+
+                    #region проверка на ошибку при добавлении в БД
+                    //проверка на ошибку при добавлении в БД
+                    if (!check)
+                    {
+                        errAdFromBD++;
+                    }
+
+                    //Если кол-во ошибок подряд, при добавлении в БД, достигло макс, то выходим
+                    //скорее всего добавляется уже  дубли
+                    if (errAdFromBD >= errAllCount)
+                    {
+                        return;
+                    }
+                    #endregion
 
 
-                    new Request().InsertBD(pathBD, data);
-
-
-                    correntAdPage++;
+                    correntAdPage++; //номер объявления на текущей странице
                     Send.InfoToLog(project, $"Спарсили {correntAdPage} обявление на странице {correntPage}");
                 }
 
@@ -94,7 +106,7 @@ namespace Kufar
                     if (correntPage >= countParsePage)
                     {
                         Send.InfoToLog(project, $"Завершаем основной парсинг, прошли: {correntPage}");
-                        return dataParses;
+                        return;
                     }
 
                 }
@@ -118,7 +130,7 @@ namespace Kufar
                 Send.InfoToLog(project, next);
 
                 //проверка токена
-                if (string.IsNullOrWhiteSpace(next)) return dataParses;
+                if (string.IsNullOrWhiteSpace(next)) return;
 
                 //формируем новую ссылку, для перехода на следующую страницу
                 url = $"{baseUrl}&cursor={next}";
@@ -252,7 +264,7 @@ namespace Kufar
 
             data.images = arr;
 
-            //logData(p, data);
+
 
             return data;
         }
@@ -714,7 +726,7 @@ namespace Kufar
                  $"ID категории- {data.Idcategory}\n" +
                  $"ID ПОДкатегории- {data.IdParentCategory}\n" +
                  $"Ссылки на фото - {img}\n" +
-                 $"Номер телефона- {data.phoneNomer}\n" +
+                 $"Номер телефона- {data.phoneNumber}\n" +
                  $"Дата публикации- {data.updateDate}\n" +
                  $"Имя пользователя- {data.UserName}\n";
 

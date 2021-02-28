@@ -36,7 +36,7 @@ namespace Kufar
         public string descriptions { get; set; }
 
         /// <summary>Номер телефона</summary>
-        public string phoneNomer { get; set; }
+        public string phoneNumber { get; set; }
         #endregion
 
     }

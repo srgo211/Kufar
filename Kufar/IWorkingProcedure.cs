@@ -9,7 +9,8 @@ namespace Kufar
 
 
         /// <summary>получаем список спаршенных данных</summary>
-        List<DataParse> GetListDataParses(Instance instance, IZennoPosterProjectModel project);
+        /// <param name="counParsePage">кол-во страниц для парсинга (-1: парсить все)</param>
+        void GetListDataParses(Instance instance, IZennoPosterProjectModel project, int counParsePage);
 
         /// <summary>Авторизация аккаунта</summary>
         void AvtorizationAccount(Instance instance, IZennoPosterProjectModel project);
@@ -20,7 +21,7 @@ namespace Kufar
         List<DataParse> GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, int IdFromBD, string proxy = null);
 
         /// <summary>получаем полную Карточку товара</summary>
-        List<DataParse> GetParseDataFromProducts(Instance instance, IZennoPosterProjectModel project, List<DataParse> dataParses);
+        void GetParseDataFromProducts(Instance instance, IZennoPosterProjectModel project);
 
         /// <summary>
         /// Добавляем в БД данные

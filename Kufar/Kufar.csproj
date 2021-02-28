@@ -162,6 +162,7 @@
     <Compile Include="Send.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Settings.cs" />
     <Compile Include="SQL\Ads.cs" />
     <Compile Include="SQL\Request.cs" />
     <Compile Include="ZennoExstensions.cs" />

@@ -47,7 +47,7 @@ namespace Kufar.SQL
 
         /// <summary>Номер телефона</summary>
         [MaxLength(30)]
-        public string phoneNomer { get; set; }
+        public string phoneNumber { get; set; }
 
 
 
@@ -55,7 +55,7 @@ namespace Kufar.SQL
         public DateTime dateWrite { get; set; } = DateTime.Now;
 
         /// <summary>статус </summary>
-        public Status status { get; set; } = Status.run;
+        public Status status { get; set; } = Status.Null;
 
     }
 }

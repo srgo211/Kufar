@@ -10,19 +10,21 @@ namespace Kufar
 
     public enum Status
     {
+        Null,
+
         /// <summary>В работе</summary>
         run,
-        /// <summary>Выполнен успешно </summary>
-        ok,
-        /// <summary>Ошибка выполнения </summary>
-        err,
-        /// <summary>Остановлен </summary>
-        stop,
+
+
+        /// <summary>Парсим номер телефона</summary>
+        parsePhoneNomer,
+
+        /// <summary>Спарсили полную карточку товара + телефон</summary>
+        parseFromKufar,
 
         /// <summary>Опубликован в region</summary>
         publih,
-        /// <summary>Спарсили с куфар</summary>
-        parse
+
     }
 
     /// <summary>
@@ -49,34 +51,32 @@ namespace Kufar
             string pathProfile = project.Directory + @"\profile\kufar_profile.zpprofile";
             string proxy = "45.89.231.240:55762:xHTsepsS:Tb9qBfym";
 
+            Settings.pathBD = project.Directory + @"\kufar.db";
 
-            string pathBD = project.Directory + @"\kufar.db";
+
             //создаем БД
-            CreateBD(project, pathBD);
+            CreateBD(project);
 
 
-            //получаем список всех объявлений
-            List<DataParse> data = GetListDataParses(instance, project);
+            //получаем список всех объявлений и заносим в БД
+            GetListDataParses(instance, project, -1);
 
             return 0;
             //делаем авторизацию, для сбора номеров телефона
             AvtorizationAccount(instance, project);
 
-            //выдергиваем все объявления, где есть номер телефона
-            data = GetDataAndNomerPhone(instance, project, data, proxy);
-
-
-            //получаем полную карточку по каждому товару
-            data = GetParseDataFromProducts(instance, project, data);
-
-
-            //добавляем данные в БД
+            //выдергиваем все объявления из БД, где есть номер телефона
+            GetDataAndNomerPhone(instance, project, proxy);
 
 
 
+            //получаем полную карточку по каждому товару и заносим в БД
+            GetParseDataFromProducts(instance, project);
 
-            string urlProduct = "https://auto.kufar.by/vi/120176604";
-            urlProduct = "https://www.kufar.by/item/119981167";
+
+
+
+
 
 
 
@@ -91,9 +91,9 @@ namespace Kufar
         #region Реализация интерфейса 
         /// <summary> Парсим все объявления </summary>
 
-        public List<DataParse> GetListDataParses(Instance instance, IZennoPosterProjectModel project)
+        public void GetListDataParses(Instance instance, IZennoPosterProjectModel project, int counParsePage)
         {
-            return Parser.Execute(instance, project, countParsePage: 1).Result;
+            Parser.Execute(instance, project, countParsePage: counParsePage);
         }
 
         /// <summary> Авторизация акк </summary>
@@ -107,83 +107,95 @@ namespace Kufar
 
 
         /// <summary> Парсим номер телефона из объявлений </summary>
-        public void GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, int IdFromBD, string proxy = null)
+        public void GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, string proxy = null)
         {
-
-
-
-            string phone = null;
-            try
+            while (true)
             {
-                phone = Parser.GetNomerPhone(instance, project, data.Id.ToString(), proxy);
-                data.phoneNomer = phone;
+                Ads data = GetAdForParsePhoneBD();
+
+                if (data == null) return;
+
+
+                string phone = null;
+                try
+                {
+                    phone = Parser.GetNomerPhone(instance, project, data.idAd.ToString(), proxy);
+                    data.phoneNumber = phone;
+                    UpdatePhoneNomberByIdBD(data.id, phone, Status.parsePhoneNomer);
+                }
+                catch (Exception ex)
+                {
+
+
+                    Send.InfoToLog(project, $"{data.link}\n" +
+                                       $"{ex.Message}"
+                                       //$"{ex.StackTrace}\n" +
+                                       //$"{ex.InnerException}\n" +
+                                       //$"{ex.Source}\n" +
+                                       //$"{ex.Data}\n"
+                                       );
+
+                    if (ex.Message.Contains("429"))
+                    {
+                        System.Threading.Thread.Sleep(2000);
+                        phone = Parser.GetNomerPhone(instance, project, data.idAd.ToString(), proxy);
+                        UpdatePhoneNomberByIdBD(data.id, phone, Status.parsePhoneNomer);
+                        if (string.IsNullOrEmpty(phone)) continue;
+                        data.phoneNumber = phone;
+                        UpdatePhoneNomberByIdBD(data.id, phone, Status.parsePhoneNomer);
+                    }
+                    if (ex.Message.Contains("400"))
+                    {
+                        Send.InfoToLog(project, "нет кнопки позвонить");
+                        UpdatePhoneNomberByIdBD(data.id, phone, Status.parsePhoneNomer);
+                        continue;
+                    }
+
+                    if (ex.Message.Contains("401"))
+                    {
+                        //должен быть номер
+                        Send.InfoToLog(project, "не авторизован, слетела авторизации");
+
+
+                        //получаем номер с помощью ВЕБ версии
+                        phone = Parser.GetNomerPhoneWeb(instance, project, data.link, proxy);
+                        Send.InfoToLog(project, phone);
+
+
+                        //получаем номер с помощью ВЕБ версии
+
+                        if (string.IsNullOrEmpty(phone)) continue;
+                        data.phoneNumber = phone;
+
+                        UpdatePhoneNomberByIdBD(data.id, phone, Status.parsePhoneNomer);
+
+                    }
+
+                }
+
+
+
+
+
             }
-            catch (Exception ex)
-            {
 
-
-                Send.InfoToLog(project, $"{data.Link}\n" +
-                                   $"{ex.Message}\n"
-                                   //$"{ex.StackTrace}\n" +
-                                   //$"{ex.InnerException}\n" +
-                                   //$"{ex.Source}\n" +
-                                   //$"{ex.Data}\n"
-                                   );
-
-                if (ex.Message.Contains("429"))
-                {
-                    System.Threading.Thread.Sleep(2000);
-                    phone = Parser.GetNomerPhone(instance, project, data.Id.ToString(), proxy);
-                    if (string.IsNullOrEmpty(phone)) continue;
-                    data.phoneNomer = phone;
-
-                }
-                if (ex.Message.Contains("400"))
-                {
-                    Send.InfoToLog(project, "нет кнопки позвонить");
-                    continue;
-                }
-
-                if (ex.Message.Contains("401"))
-                {
-                    //должен быть номер
-                    Send.InfoToLog(project, "не авторизован, слетела авторизации");
-
-
-                    //получаем номер с помощью ВЕБ версии
-                    phone = Parser.GetNomerPhoneWeb(instance, project, data.Link, proxy);
-                    Send.InfoToLog(project, phone);
-
-
-                    //получаем номер с помощью ВЕБ версии
-
-                    if (string.IsNullOrEmpty(phone)) continue;
-                    data.phoneNomer = phone;
-                }
-
-
-
-
-
-
-            }
-            newDataParse.Add(data);
-
-
-            return newDataParse;
 
 
         }
 
         /// <summary> Получаем полную карточку товара </summary>
-        public List<DataParse> GetParseDataFromProducts(Instance instance, IZennoPosterProjectModel project, List<DataParse> dataParses)
+        public void GetParseDataFromProducts(Instance instance, IZennoPosterProjectModel project)
         {
-            List<DataParse> newDataParse = new List<DataParse>();
+            Ads dataAd = null;
 
-            foreach (var data in dataParses)
+            while (true)
             {
+                dataAd = GetAdIfParseNumberPhone();
+
+                if (dataAd == null) return;
+
                 DataParse parse = null;
-                string urlProduct = data.Link;
+                string urlProduct = dataAd.link;
 
                 //парсим недвижимость
                 if (urlProduct.Contains("re.kufar.by"))
@@ -212,14 +224,31 @@ namespace Kufar
 
                 if (parse == null) continue;
 
-                parse.phoneNomer = data.phoneNomer;
-                // Parser.logData(project, parse);
 
-                newDataParse.Add(parse);
+                //обновляем данные в БД
+                UpdateFromProducts(parse, dataAd, Status.parseFromKufar);
+
+
+
             }
 
-            return newDataParse;
+
         }
+
+
+
+        List<DataParse> IWorkingProcedure.GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, List<DataParse> dataParses, string proxy)
+        {
+            throw new NotImplementedException();
+        }
+
+        List<DataParse> IWorkingProcedure.GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, int IdFromBD, string proxy)
+        {
+            throw new NotImplementedException();
+        }
+
+
+
         #endregion
 
 
@@ -230,39 +259,72 @@ namespace Kufar
             throw new NotImplementedException();
         }
 
-        public void CreateBD(IZennoPosterProjectModel project, string pathBD)
+        public void CreateBD(IZennoPosterProjectModel project)
         {
 
             //проверка есть ли БД по этому пути
-            if (!File.Exists(pathBD))
+            if (!File.Exists(Settings.pathBD))
             {
                 //создаем БД
-                new Request().CreateBD(pathBD);
-                Send.InfoToLog(project, pathBD);
+                new Request().CreateBD();
+                Send.InfoToLog(project, "Создали БД: " + Settings.pathBD);
             }
 
 
         }
 
-        public void AddBD(string pathBD, DataParse dataParse)
+        public void AddBD(DataParse dataParse)
         {
             throw new NotImplementedException();
         }
 
-        public Ads GetAdAndUpdateCheckPhoneBD(string pathBD, DataParse dataParse)
+
+
+
+        public Ads GetAdForParsePhoneBD()
         {
-            return new Request().GetAdFromBDForParsePhone(pathBD, dataParse);
+            return new Request().GetAdFromBDForParsePhone();
         }
 
-        public void UpdateBD(string pathBD, int idBD)
+        Ads IDataBD.GetAdFromIdBD(int idFromBD)
         {
             throw new NotImplementedException();
         }
 
-        public void DeleteBD(string pathBD, int idBD)
+        public void UpdatePhoneNomberByIdBD(int idBD, string phoneNumber, Status status)
+        {
+            new Request().UpdatePhoneNomberByIdBD(idBD, phoneNumber, status);
+        }
+
+        void IDataBD.DeleteBD(int idBD)
         {
             throw new NotImplementedException();
         }
+
+        public Ads GetAdIfParseNumberPhone()
+        {
+            return new Request().GetAdIfParseNumberPhone();
+        }
+
+        public void UpdateFromProducts(DataParse dataParse, Ads ad, Status status)
+        {
+            new Request().UpdateFromProducts(dataParse, ad, status);
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         #endregion
     }
 }

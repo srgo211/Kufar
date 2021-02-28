@@ -9,9 +9,9 @@ namespace Kufar
         /// Создание БД
         /// </summary>
         /// <param name="pathBD"></param>
-        void CreateBD(IZennoPosterProjectModel project, string pathBD);
+        void CreateBD(IZennoPosterProjectModel project);
 
-        void AddBD(string pathBD, DataParse dataParse);
+        void AddBD(DataParse dataParse);
 
         /// <summary>
         /// Получаем объявлеие для парсинга телефона и обновляем статус
@@ -19,12 +19,28 @@ namespace Kufar
         /// <param name="pathBD"></param>
         /// <param name="dataParse"></param>
         /// <returns></returns>
-        Ads GetAdAndUpdateCheckPhoneBD(string pathBD, DataParse dataParse);
+        Ads GetAdForParsePhoneBD();
 
-        Ads GetAdAndUpdateCheckPhoneBD(string pathBD, int idFromBD);
-        void UpdateBD(string pathBD, int idBD);
+        /// <summary>Получаем данные из БД по ID </summary>
+        Ads GetAdFromIdBD(int idFromBD);
 
-        void DeleteBD(string pathBD, int idBD);
+        /// <summary>Получаем данные из БД, где спаршен номер телефона</summary>
+        Ads GetAdIfParseNumberPhone();
+
+
+
+        /// <summary>
+        /// Обновляем Номер телефона
+        /// </summary>
+        /// <param name="idBd">ид БД</param>
+        /// <param name="phoneNumber">номер телефона</param>
+        void UpdatePhoneNomberByIdBD(int idBd, string phoneNumber, Status status);
+
+
+        void UpdateFromProducts(DataParse dataParse, Ads ad, Status status = Status.parseFromKufar);
+
+
+        void DeleteBD(int idBD);
 
     }
 
