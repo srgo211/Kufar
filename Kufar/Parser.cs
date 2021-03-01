@@ -355,15 +355,45 @@ namespace Kufar
         /// <returns></returns>
         public static string GetNomerPhone(Instance instance, IZennoPosterProjectModel project, string idItem, string proxy = null)
         {
+            //Получаем юзер агент
             string userAgent = project.Profile.UserAgent;
 
-
+            //получаем ссылку для парсинга номера телефона
             string url = $"https://cre-api.kufar.by/items-search/v1/engine/v1/item/{idItem}/phone";
             string res = string.Empty;
 
+            //Получаем куки из ЗЕНКИ
+            CookieStorage cookieStorage = GetCookie(instance, project);
+
+            using (var rq = new HttpRequest())
+            {
+                rq.UserAgent = userAgent;
+
+                rq.UseCookies = true;
+
+                rq.Cookies = cookieStorage;
+                if (!string.IsNullOrWhiteSpace(proxy)) rq.Proxy = ProxyClient.Parse(ProxyType.HTTP, proxy);
 
 
+                // Отправляем запрос.
+                HttpResponse response = rq.Get(url);
 
+                // Принимаем тело сообщения в виде строки.
+                res = response.ToString();
+
+
+            }
+
+            dynamic json = JObject.Parse(res);
+
+            //Send.InfoToLog(project, res);
+            return json?.phone;
+        }
+
+
+        /// <summary>Получаем куки из зенки и передаем в XNET</summary>
+        private static CookieStorage GetCookie(Instance instance, IZennoPosterProjectModel project)
+        {
             ICookieContainer cookieContainer = project.Profile.CookieContainer;
 
             IEnumerable<string> domains = cookieContainer.Domains;
@@ -417,33 +447,7 @@ namespace Kufar
 
             }
 
-
-
-
-
-            using (var rq = new HttpRequest())
-            {
-                rq.UserAgent = userAgent;
-
-                rq.UseCookies = true;
-
-                rq.Cookies = cookieStorage;
-                if (!string.IsNullOrWhiteSpace(proxy)) rq.Proxy = ProxyClient.Parse(ProxyType.HTTP, proxy);
-
-
-                // Отправляем запрос.
-                HttpResponse response = rq.Get(url);
-
-                // Принимаем тело сообщения в виде строки.
-                res = response.ToString();
-
-
-            }
-
-            dynamic json = JObject.Parse(res);
-
-            //Send.InfoToLog(project, res);
-            return json?.phone;
+            return cookieStorage;
         }
 
         public static string GetNomerPhoneWeb(Instance instance, IZennoPosterProjectModel project, string url, string proxy = null)

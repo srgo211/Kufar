@@ -59,13 +59,13 @@ namespace Kufar
 
 
             //получаем список всех объявлений и заносим в БД
-            GetListDataParses(instance, project, -1);
+            //GetListDataParses(instance, project, -1);
 
-            return 0;
+            // return 0;
             //делаем авторизацию, для сбора номеров телефона
             AvtorizationAccount(instance, project);
 
-            //выдергиваем все объявления из БД, где есть номер телефона
+            //Парсим номер телефона
             GetDataAndNomerPhone(instance, project, proxy);
 
 
@@ -111,6 +111,7 @@ namespace Kufar
         {
             while (true)
             {
+                //Получаем объявление из БД для парсинга телефона
                 Ads data = GetAdForParsePhoneBD();
 
                 if (data == null) return;
@@ -119,6 +120,7 @@ namespace Kufar
                 string phone = null;
                 try
                 {
+                    //парсим номер телефона GET запросом
                     phone = Parser.GetNomerPhone(instance, project, data.idAd.ToString(), proxy);
                     data.phoneNumber = phone;
                     UpdatePhoneNomberByIdBD(data.id, phone, Status.parsePhoneNomer);
@@ -190,6 +192,7 @@ namespace Kufar
 
             while (true)
             {
+                //Получаем объявление, где есть номер телефона
                 dataAd = GetAdIfParseNumberPhone();
 
                 if (dataAd == null) return;
@@ -280,7 +283,7 @@ namespace Kufar
 
 
 
-
+        /// <summary>Получаем объявление из БД для парсинга телефона</summary>
         public Ads GetAdForParsePhoneBD()
         {
             return new Request().GetAdFromBDForParsePhone();
@@ -300,6 +303,8 @@ namespace Kufar
         {
             throw new NotImplementedException();
         }
+
+        /// <summary>Получаем объявление, где есть номер телефона</summary>
 
         public Ads GetAdIfParseNumberPhone()
         {
