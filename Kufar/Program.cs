@@ -59,11 +59,11 @@ namespace Kufar
 
 
             //получаем список всех объявлений и заносим в БД
-            GetListDataParses(instance, project, -1);
+            GetListDataParses(instance, project, 0);
 
             // return 0;
             //делаем авторизацию, для сбора номеров телефона
-            AvtorizationAccount(instance, project);
+            AvtorizationAccount(instance, project, proxy);
 
             //Парсим номер телефона
             GetDataAndNomerPhone(instance, project, proxy);
@@ -97,12 +97,12 @@ namespace Kufar
         }
 
         /// <summary> Авторизация акк </summary>
-        public void AvtorizationAccount(Instance instance, IZennoPosterProjectModel project)
+        public void AvtorizationAccount(Instance instance, IZennoPosterProjectModel project, string pathProfile, string proxy)
         {
-            string pathProfile = project.Directory + @"\profile\kufar_profile.zpprofile";
+            
 
             Send.InfoToLog(project, "Авторизация через профиль");
-            Parser.AvtorizationByProfile(instance, project, pathProfile);
+            Parser.AvtorizationByProfile(instance, project, pathProfile, proxy);
         }
 
 

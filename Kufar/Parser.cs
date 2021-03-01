@@ -150,9 +150,21 @@ namespace Kufar
         /// <param name="instance"></param>
         /// <param name="project"></param>
         /// <param name="pathProfile"></param>
-        public static void AvtorizationByProfile(Instance instance, IZennoPosterProjectModel project, string pathProfile)
+        public static void AvtorizationByProfile(Instance instance, IZennoPosterProjectModel project, string pathProfile, string proxy)
         {
+            //загружаем профиль
             project.Profile.Load(pathProfile);
+
+            //устанавливаем прокси
+            if (!string.IsNullOrWhiteSpace(proxy))
+            {
+                //коевертируем прокси в Зенно формат
+                proxy = ConvertProxy(proxy);
+                //установка прокси
+                SetProxy(instance, proxy);
+            }
+
+
 
             instance.ActiveTab.NavigateAndWait(baseUrl, 2000);
 
@@ -528,13 +540,8 @@ namespace Kufar
             if (!string.IsNullOrWhiteSpace(proxy))
             {
                 proxy = ConvertProxy(proxy);
-
-                instance.SetProxy(proxy,
-                    useProxifier: true,
-                    emulateGeolocation: true,
-                    emulateTimezone: true,
-                    emulateWebrtc: true
-                    );
+                //установка прокси
+                SetProxy(instance, proxy);
             }
 
 
@@ -559,6 +566,21 @@ namespace Kufar
 
 
 
+        }
+        /// <summary>
+        /// Установка прокси в инстанс
+        /// </summary>
+        /// <param name="instance"></param>
+        /// <param name="proxy">прокси</param>
+
+        private static void SetProxy(Instance instance, string proxy)
+        {
+            instance.SetProxy(proxy,
+                                useProxifier: true,
+                                emulateGeolocation: true,
+                                emulateTimezone: true,
+                                emulateWebrtc: true
+                                );
         }
 
         #region Вспомогательные методы
@@ -602,11 +624,13 @@ namespace Kufar
             else
             {
                 //проверка на прокси
-                if (!string.IsNullOrWhiteSpace(proxy)) instance.SetProxy(proxy,
-                                                        useProxifier: true,
-                                                        emulateGeolocation: true,
-                                                        emulateTimezone: true,
-                                                        emulateWebrtc: true);
+                if (!string.IsNullOrWhiteSpace(proxy))
+                {
+                    //коевертируем прокси в Зенно формат
+                    proxy = ConvertProxy(proxy);
+                    //установка прокси
+                    SetProxy(instance, proxy);
+                }
 
                 instance.ActiveTab.NavigateAndWait(url, 500);
 

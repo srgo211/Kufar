@@ -13,7 +13,7 @@ namespace Kufar
         void GetListDataParses(Instance instance, IZennoPosterProjectModel project, int counParsePage);
 
         /// <summary>Авторизация аккаунта</summary>
-        void AvtorizationAccount(Instance instance, IZennoPosterProjectModel project);
+        void AvtorizationAccount(Instance instance, IZennoPosterProjectModel project, string pathProfile, string proxy);
 
         /// <summary>получаем список данных с номерами телефонов</summary>
         List<DataParse> GetDataAndNomerPhone(Instance instance, IZennoPosterProjectModel project, List<DataParse> dataParses, string proxy = null);
