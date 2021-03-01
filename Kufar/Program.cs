@@ -48,10 +48,11 @@ namespace Kufar
             int executionResult = 0;
 
             Send.InfoToLog(project, "Старт шаблона");
-            string pathProfile = project.Directory + @"\profile\kufar_profile.zpprofile";
+
             string proxy = "45.89.231.240:55762:xHTsepsS:Tb9qBfym";
 
             Settings.pathBD = project.Directory + @"\kufar.db";
+            Settings.pathProfile = project.Directory + @"\profile\kufar_profile.zpprofile";
 
 
             //создаем БД
@@ -63,7 +64,7 @@ namespace Kufar
 
             // return 0;
             //делаем авторизацию, для сбора номеров телефона
-            AvtorizationAccount(instance, project, proxy);
+            AvtorizationAccount(instance, project, Settings.pathProfile, proxy);
 
             //Парсим номер телефона
             GetDataAndNomerPhone(instance, project, proxy);
@@ -99,7 +100,7 @@ namespace Kufar
         /// <summary> Авторизация акк </summary>
         public void AvtorizationAccount(Instance instance, IZennoPosterProjectModel project, string pathProfile, string proxy)
         {
-            
+
 
             Send.InfoToLog(project, "Авторизация через профиль");
             Parser.AvtorizationByProfile(instance, project, pathProfile, proxy);
@@ -171,6 +172,13 @@ namespace Kufar
 
                         UpdatePhoneNomberByIdBD(data.id, phone, Status.parsePhoneNomer);
 
+                    }
+
+                    if (ex.Message.Contains("404"))
+                    {
+                        Send.InfoToLog(project, "Объявление не найдено");
+                        UpdatePhoneNomberByIdBD(data.id, phone, Status.parsePhoneNomer);
+                        continue;
                     }
 
                 }

@@ -381,11 +381,11 @@ namespace Kufar
 
 
 
-
+            string tokenAuthorization;
             //Получаем куки из ЗЕНКИ и передаем в XNET
-            CookieStorage cookieStorage = GetCookie(instance, project);
+            CookieStorage cookieStorage = GetCookie(instance, project, out tokenAuthorization);
 
-            res = GetXnet(proxy, userAgent, url, cookieStorage);
+            res = GetXnet(proxy, userAgent, url, cookieStorage, tokenAuthorization);
 
             dynamic json = JObject.Parse(res);
 
@@ -401,7 +401,7 @@ namespace Kufar
         /// <param name="url">url адрес</param>
         /// <param name="cookieStorage">куки</param>
         /// <returns></returns>
-        private static string GetXnet(string proxy, string userAgent, string url, CookieStorage cookieStorage)
+        private static string GetXnet(string proxy, string userAgent, string url, CookieStorage cookieStorage, string tokenAuthorization)
         {
 
 
@@ -414,7 +414,12 @@ namespace Kufar
 
                 rq.Cookies = cookieStorage;
 
-                //rq.Cookies.IsLocked = true; куки могут меняться автоматически, чтоб этого не произшло - true
+                rq.Cookies.IsLocked = true; //куки могут меняться автоматически, чтоб этого не произшло - true
+
+                rq.AddHeader("X-App-Name", "Web Kufar");
+                rq.AddHeader("Authorization", $"Bearer {tokenAuthorization}");
+
+
 
                 if (!string.IsNullOrWhiteSpace(proxy)) rq.Proxy = ProxyClient.Parse(ProxyType.HTTP, proxy);
 
@@ -433,7 +438,7 @@ namespace Kufar
 
 
         /// <summary>Получаем куки из зенки и передаем в XNET</summary>
-        private static CookieStorage GetCookie(Instance instance, IZennoPosterProjectModel project)
+        private static CookieStorage GetCookie(Instance instance, IZennoPosterProjectModel project, out string tokenAuthorization)
         {
             #region Способ - 1 Куки берем из cookieContainer
             /*
@@ -492,6 +497,7 @@ namespace Kufar
             */
             #endregion
 
+            tokenAuthorization = null;
             //иницилизация кук
             CookieStorage cookieStorage = new CookieStorage();
 
@@ -508,6 +514,7 @@ namespace Kufar
                 {
                     Send.InfoToLog(project, item.Name + " = " + item.Value);
 
+                    if (item.Name == "k_jwt" && domen.Contains("kufar")) tokenAuthorization = item.Value;
                     var cook = new Cookie(item.Name, item.Value);
                     cook.Domain = domen;
                     cookieStorage.Add(cook);
