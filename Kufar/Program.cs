@@ -59,7 +59,7 @@ namespace Kufar
 
 
             //получаем список всех объявлений и заносим в БД
-            //GetListDataParses(instance, project, -1);
+            GetListDataParses(instance, project, -1);
 
             // return 0;
             //делаем авторизацию, для сбора номеров телефона

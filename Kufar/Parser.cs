@@ -25,6 +25,10 @@ namespace Kufar
         /// <returns>Код выполнения группы действий</returns>
         public static void Execute(Instance instance, IZennoPosterProjectModel project, bool checkGet = true, int countParsePage = -1, string proxy = null)
         {
+            //проверка на 0 страниц для парсинга
+            if (countParsePage == 0) return;
+
+
             string url = baseUrl;
             string pathBD = project.Directory + @"\kufar.db";
 
@@ -362,9 +366,34 @@ namespace Kufar
             string url = $"https://cre-api.kufar.by/items-search/v1/engine/v1/item/{idItem}/phone";
             string res = string.Empty;
 
-            //Получаем куки из ЗЕНКИ
+
+
+
+
+            //Получаем куки из ЗЕНКИ и передаем в XNET
             CookieStorage cookieStorage = GetCookie(instance, project);
 
+            res = GetXnet(proxy, userAgent, url, cookieStorage);
+
+            dynamic json = JObject.Parse(res);
+
+            //Send.InfoToLog(project, res);
+            return json?.phone;
+        }
+
+        /// <summary>
+        /// Запрос с помощью Xnet
+        /// </summary>
+        /// <param name="proxy">прокси</param>
+        /// <param name="userAgent">юзер агент</param>
+        /// <param name="url">url адрес</param>
+        /// <param name="cookieStorage">куки</param>
+        /// <returns></returns>
+        private static string GetXnet(string proxy, string userAgent, string url, CookieStorage cookieStorage)
+        {
+
+
+            string res;
             using (var rq = new HttpRequest())
             {
                 rq.UserAgent = userAgent;
@@ -372,6 +401,9 @@ namespace Kufar
                 rq.UseCookies = true;
 
                 rq.Cookies = cookieStorage;
+
+                //rq.Cookies.IsLocked = true; куки могут меняться автоматически, чтоб этого не произшло - true
+
                 if (!string.IsNullOrWhiteSpace(proxy)) rq.Proxy = ProxyClient.Parse(ProxyType.HTTP, proxy);
 
 
@@ -384,16 +416,15 @@ namespace Kufar
 
             }
 
-            dynamic json = JObject.Parse(res);
-
-            //Send.InfoToLog(project, res);
-            return json?.phone;
+            return res;
         }
 
 
         /// <summary>Получаем куки из зенки и передаем в XNET</summary>
         private static CookieStorage GetCookie(Instance instance, IZennoPosterProjectModel project)
         {
+            #region Способ - 1 Куки берем из cookieContainer
+            /*
             ICookieContainer cookieContainer = project.Profile.CookieContainer;
 
             IEnumerable<string> domains = cookieContainer.Domains;
@@ -446,6 +477,36 @@ namespace Kufar
                 }
 
             }
+            */
+            #endregion
+
+            //иницилизация кук
+            CookieStorage cookieStorage = new CookieStorage();
+
+            ICookieContainer cookieContainer = project.Profile.CookieContainer;
+            IEnumerable<string> domains = cookieContainer.Domains;
+
+            foreach (var domen in domains)
+            {
+
+                // get cookie items
+                var items = project.Profile.CookieContainer.Get(domen);
+                // output to log info of cookie item
+                foreach (var item in items)
+                {
+                    Send.InfoToLog(project, item.Name + " = " + item.Value);
+
+                    var cook = new Cookie(item.Name, item.Value);
+                    cook.Domain = domen;
+                    cookieStorage.Add(cook);
+
+                }
+
+
+
+
+            }
+
 
             return cookieStorage;
         }
