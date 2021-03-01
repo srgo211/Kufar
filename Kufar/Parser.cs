@@ -30,7 +30,7 @@ namespace Kufar
 
 
             string url = baseUrl;
-            string pathBD = project.Directory + @"\kufar.db";
+            //string pathBD = project.Directory + @"\kufar.db";
 
             int correntPage = 1; //номер текущей страницы
 
@@ -65,7 +65,7 @@ namespace Kufar
                         CategoryName = j.categoryName,
                         Idcategory = j.category,
                         IdParentCategory = j.parent,
-                        Link = j.adViewLink,
+                        Link = j.adViewFriendlyLink ?? j.adViewLink,
                         Price = j.price.ru,
                         Title = j.title,
                         UserName = j.userName,
@@ -303,30 +303,14 @@ namespace Kufar
 
             dynamic j = json?.props?.initialState?.adView?.data;
 
+            if (j == null) return null;
 
-            foreach (var parameter in j.oldAdParameters)
-            {
-                string key = parameter.pl;
+            dynamic old = j.oldAdParameters ?? j.initial?.ad_parameters;
 
-                switch (key.ToLower())
-                {
-                    case "координаты":
-                        continue;
-                    default:
-                        break;
-                }
+            string condition;
 
-
-                string value = String.Empty;
-                try
-                {
-                    value = parameter.vl;
-                }
-                catch { continue; }
-
-                oldAdParameters.Add(key, value);
-            }
-
+            oldAdParameters = GetOldAdParameters(old, out condition);
+            data.condition = condition;
 
 
 
@@ -512,7 +496,7 @@ namespace Kufar
                 // output to log info of cookie item
                 foreach (var item in items)
                 {
-                    Send.InfoToLog(project, item.Name + " = " + item.Value);
+                    //Send.InfoToLog(project, item.Name + " = " + item.Value);
 
                     if (item.Name == "k_jwt" && domen.Contains("kufar")) tokenAuthorization = item.Value;
                     var cook = new Cookie(item.Name, item.Value);
@@ -692,43 +676,10 @@ namespace Kufar
             dynamic j = json?.props?.initialState?.adView?.data;
 
             var oldAdParameter = j.oldAdParameters ?? j.initial?.ad_parameters;
-            if (oldAdParameter != null)
-            {
-                foreach (var parameter in oldAdParameter)
-                {
-                    string key = parameter.pl;
 
-                    switch (key.ToLower())
-                    {
-                        case "координаты":
-                        case "товары с куфар доставкой":
-                        case "товары с куфар оплатой":
-                        case "тип сделки":
-                        case "тип оплаты":
-                            continue;
-
-                        case "состояние":
-                            data.condition = parameter.vl;
-                            continue;
-
-                        default:
-                            break;
-                    }
-
-
-                    string value = String.Empty;
-                    try
-                    {
-                        value = parameter.vl;
-                    }
-                    catch { continue; }
-
-                    oldAdParameters.Add(key, value);
-                }
-            }
-
-
-
+            string condition;
+            oldAdParameters = GetOldAdParameters(oldAdParameter, out condition);
+            data.condition = condition;
 
             data.Id = j.id;
             data.Link = j.adViewFriendlyLink ?? j.adViewLink;
@@ -779,6 +730,72 @@ namespace Kufar
             return newProxy;
 
         }
+
+
+        /// <summary>
+        /// Получаем словарь с параметрами (характеристики товара)
+        /// </summary>
+        /// <param name="oldAdParameter"></param>
+        /// <param name="condition">состояние</param>
+        /// <returns></returns>
+        static Dictionary<string, string> GetOldAdParameters(dynamic oldAdParameter, out string condition)
+        {
+            condition = null;
+            Dictionary<string, string> oldAdParameters = new Dictionary<string, string>();
+            if (oldAdParameter != null)
+            {
+                foreach (var parameter in oldAdParameter)
+                {
+                    string key = parameter.pl;
+
+                    switch (key.ToLower())
+                    {
+                        case "координаты":
+                        case "товары с куфар доставкой":
+                        case "товары с куфар оплатой":
+                        case "тип сделки":
+                        case "тип оплаты":
+                            continue;
+
+                        case "состояние":
+                            condition = parameter.vl;
+                            continue;
+
+                        default:
+                            break;
+                    }
+
+
+                    string value = String.Empty;
+                    try
+                    {
+                        value = parameter.vl;
+                        if (string.IsNullOrWhiteSpace(value)) value = parameter.v;
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            value = String.Join(", ", parameter.vl);
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+
+                    }
+
+                    oldAdParameters.Add(key, value);
+                }
+
+                return oldAdParameters;
+            }
+
+
+            return null;
+        }
+
+
 
 
         public static void logData(IZennoPosterProjectModel p, DataParse data)

@@ -60,14 +60,14 @@ namespace Kufar
 
 
             //получаем список всех объявлений и заносим в БД
-            GetListDataParses(instance, project, 0);
+            //GetListDataParses(instance, project, 0);
 
             // return 0;
             //делаем авторизацию, для сбора номеров телефона
-            AvtorizationAccount(instance, project, Settings.pathProfile, proxy);
+            //AvtorizationAccount(instance, project, Settings.pathProfile, proxy);
 
             //Парсим номер телефона
-            GetDataAndNomerPhone(instance, project, proxy);
+            //GetDataAndNomerPhone(instance, project, proxy);
 
 
 
