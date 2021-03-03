@@ -45,6 +45,13 @@ namespace Kufar
         public int Execute(Instance instance, IZennoPosterProjectModel project)
         {
 
+
+            ActionGroup001.Execute(instance, project);
+
+
+            return 0;
+
+
             int executionResult = 0;
 
             Send.InfoToLog(project, "Старт шаблона");

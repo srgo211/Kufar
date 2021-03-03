@@ -769,11 +769,14 @@ namespace Kufar
                     string value = String.Empty;
                     try
                     {
+                        //получаем парамет
                         value = parameter.vl;
+                        //если пусто, смотрим по другому критерию
                         if (string.IsNullOrWhiteSpace(value)) value = parameter.v;
                     }
                     catch
                     {
+                        //если ошибка, то скорее всего был массив, парсим массив из описаний
                         try
                         {
                             value = String.Join(", ", parameter.vl);
